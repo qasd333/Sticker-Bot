@@ -1,3 +1,5 @@
+Dev Channel: https://t.me/vzhuh333
+
 Гайд по установке:
 - Скачать софт, перейти в директорию софта.
 - Скачать python3.11-3.12 + создать venv (virtual env) + активировать venv (virtual env).
