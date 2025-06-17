@@ -179,6 +179,8 @@ class Snipe:
                                 file.write(
                                     f"Collection ID: {character['collection_id']} Character ID: {character['id']}")
 
+                            await self.telethon_session.start()
+
                             await self._buy_sticker_for_stars(
                                 character["collection_id"], character["id"])
 
