@@ -183,7 +183,7 @@ class Snipe:
             while not found:
                 try:
                     r = await self._get_sticker_list()
-                    print(r.json())
+                    #print(r.json())
 
                     for i in r.json()["data"]["promo"]:
                         character = i["character"]
