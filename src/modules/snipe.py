@@ -164,9 +164,12 @@ class Snipe:
         if buy_with_your_data == False:
             self.found_elements = []
 
-            for _ in range(10):
+            for _ in range(50):
                 try:
                     current_sticker_list = await self._get_sticker_list()
+
+                    # with open("./data/init_sticker_list.json", "r", encoding="utf-8") as f:
+                    #     current_sticker_list = json.load(f)
 
                     for i in current_sticker_list.json()["data"]["promo"]:
                         character = i["character"]
@@ -183,18 +186,23 @@ class Snipe:
             while not found:
                 try:
                     r = await self._get_sticker_list()
-                    #print(r.json())
+
+                    # with open("./data/current_sticker_list.json", "r", encoding="utf-8") as f:
+                    #     r = json.load(f)
+                    # with open("./data/current_sticker_list.json", "w", encoding="utf-8") as f:
+                    #     f.write(json.dumps(r.json(), ensure_ascii=False))
 
                     for i in r.json()["data"]["promo"]:
                         character = i["character"]
                         ids = (character["collection_id"], character["id"])
 
-                        if ids not in self.found_elements and STICKER_NAME.lower() in character["name"].lower():
+                        obj_str = json.dumps(i, ensure_ascii=False)
+                        if ids not in self.found_elements and STICKER_NAME.lower() in obj_str.lower():
                             logger.success(
                                 f'New sticker found. Name: {character["name"]} | Collection ID: {character["collection_id"]} | Character ID: {character["id"]} | Price: {character["price"]} stars.')
                             with open("./data/new_element.txt", "w") as file:
                                 file.write(
-                                    f"Collection ID: {character['collection_id']} Character ID: {character['id']}")
+                                    f"Collection ID: {character['collection_id']}. Character ID: {character['id']}. Price: {character['price']} stars. Name: {character['name']}")
 
                             await self.telethon_session.start()
 
@@ -203,8 +211,12 @@ class Snipe:
 
                             found = True
                             break
-                    print(
-                        f'\rCount of requests: {count_of_requests}', end='')
+                        else:
+                            logger.info(
+                                f'Sticker not eligible for filter. Name: {character["name"]} | Collection ID: {character["collection_id"]} | Character ID: {character["id"]} | Price: {character["price"]} stars.')
+                    
+                    logger.info(
+                        f'🔥🔥🔥Count of requests: {count_of_requests}🔥🔥🔥')
                     count_of_requests += 1
 
                 except Exception as e:
