@@ -64,11 +64,24 @@ class Snipe:
 
             await asyncio.sleep(10)  # Проверяем соединение каждые 10 секунд
 
+    async def _handle_token_refresh(self):
+        """Обновляет bearer token каждые 20 минут"""
+        while True:
+            await asyncio.sleep(1200)  # 20 минут = 1200 секунд
+            try:
+                logger.info("Refreshing bearer token...")
+                bearer_token = await self._auth()
+                self.HEADERS['authorization'] = f'Bearer {bearer_token}'
+                logger.success("Bearer token successfully refreshed")
+            except Exception as e:
+                logger.error(f"Error refreshing bearer token: {e}")
+
     async def _get_sticker_list(self):
         r = await self.curl_session.get(
             'https://api.stickerdom.store/api/v1/home',
             headers=self.HEADERS
         )
+
         return r
 
     async def _get_url_for_buy(self, collection_id, character_id):
@@ -132,6 +145,9 @@ class Snipe:
         # Запускаем мониторинг соединения в фоне
         asyncio.create_task(self._handle_telethon_session_connection())
 
+        # Запускаем обновление токена в фоне
+        asyncio.create_task(self._handle_token_refresh())
+
         while not self.telethon_session.is_connected():
             await asyncio.sleep(1)
 
@@ -167,6 +183,7 @@ class Snipe:
             while not found:
                 try:
                     r = await self._get_sticker_list()
+                    print(r.json())
 
                     for i in r.json()["data"]["promo"]:
                         character = i["character"]
@@ -186,12 +203,12 @@ class Snipe:
 
                             found = True
                             break
-                except Exception as e:
-                    pass
+                    print(
+                        f'\rCount of requests: {count_of_requests}', end='')
+                    count_of_requests += 1
 
-                print(
-                    f'\rCount of requests: {count_of_requests}', end='')
-                count_of_requests += 1
+                except Exception as e:
+                    print(e)
 
                 await asyncio.sleep(1)
 
@@ -203,23 +220,23 @@ class Snipe:
                 collection_id, character_id)
 
     async def _auth(self):
-        token_file = 'data/bearer_token.txt'
+        # token_file = 'data/bearer_token.txt'
 
-        # Проверяем существующий токен
-        if os.path.exists(token_file):
-            try:
-                with open(token_file, 'r', encoding='utf-8') as f:
-                    existing_token = f.read().strip()
+        # # Проверяем существующий токен
+        # if os.path.exists(token_file):
+        #     try:
+        #         with open(token_file, 'r', encoding='utf-8') as f:
+        #             existing_token = f.read().strip()
 
-                if self._is_token_valid(existing_token):
-                    # logger.success("Using existing valid token")
-                    return existing_token
-                else:
-                    # logger.warning("Existing token expired, getting new one")
-                    pass
-            except Exception as e:
-                # logger.warning(f"Error reading token: {e}")
-                pass
+        #         if self._is_token_valid(existing_token):
+        #             # logger.success("Using existing valid token")
+        #             return existing_token
+        #         else:
+        #             # logger.warning("Existing token expired, getting new one")
+        #             pass
+        #     except Exception as e:
+        #         # logger.warning(f"Error reading token: {e}")
+        #         pass
 
         # Получаем новый токен
         logger.info("Authorization in StickerDOM...")
@@ -237,12 +254,12 @@ class Snipe:
 
         new_token = r.json()['data']
 
-        # Сохраняем новый токен
-        os.makedirs('data', exist_ok=True)
-        with open(token_file, 'w', encoding='utf-8') as f:
-            f.write(new_token)
+        # # Сохраняем новый токен
+        # os.makedirs('data', exist_ok=True)
+        # with open(token_file, 'w', encoding='utf-8') as f:
+        #     f.write(new_token)
 
-        logger.success("New token received and saved")
+        # logger.success("New token received and saved")
         return new_token
 
     def _is_token_valid(self, token):
