@@ -3,4 +3,4 @@ API_HASH = '1488' # получить с https://my.telegram.org/
 
 COUNT_FOR_BUY = 3 # сколько стикеров бот купит
 
-STICKER_NAME = 'Doodles' # название новых стикеров
+STICKER_NAME = 'Bored' # название новых стикеров
