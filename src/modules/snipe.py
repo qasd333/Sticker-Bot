@@ -10,13 +10,15 @@ from telethon.tl.functions.messages import RequestWebViewRequest
 from telethon.tl.types import InputInvoiceSlug, InputPeerUser
 from telethon.tl.functions.payments import GetPaymentFormRequest, SendStarsFormRequest, GetStarsStatusRequest
 
-from data.config import API_ID, API_HASH, COUNT_FOR_BUY, STICKER_NAME
+from data.config import API_ID, API_HASH, COUNT_FOR_BUY_STARS, COUNT_FOR_BUY_TON, STICKER_NAME, mnemonic
 
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from fake_useragent import UserAgent
 import random
 from urllib.parse import unquote
+
+from TonTools import *
 
 
 class Snipe:
@@ -111,7 +113,7 @@ class Snipe:
 
     async def _buy_sticker_for_stars(self, collection_id, character_id):
         logger.info(
-            f'Buying {COUNT_FOR_BUY} stickers for stars.')
+            f'Buying {COUNT_FOR_BUY_STARS} stickers for stars.')
 
         url = await self._get_url_for_buy(collection_id, character_id)
 
@@ -123,7 +125,7 @@ class Snipe:
 
         success_count = 0
 
-        while success_count < COUNT_FOR_BUY:
+        while success_count < COUNT_FOR_BUY_STARS:
             try:
                 form = await self.telethon_session(GetPaymentFormRequest(invoice=invoice))
 
@@ -141,6 +143,53 @@ class Snipe:
                     logger.error(f'Error buying sticker for stars: {e}')
                     await asyncio.sleep(1)
 
+    async def _buy_sticker_for_ton(self, collection_id, character_id):
+        if COUNT_FOR_BUY_TON == 0:
+            return
+
+        logger.info(
+            f'Buying {COUNT_FOR_BUY_TON} stickers for ton.')
+
+        params = {
+            'collection': str(collection_id),
+            'character': str(character_id),
+            'currency': 'TON',
+            'count': str(COUNT_FOR_BUY_TON),
+        }
+
+        while True:
+            try:
+                r = await self.curl_session.post(
+                    'https://api.stickerdom.store/api/v1/shop/buy/crypto',
+                    headers=self.HEADERS,
+                    params=params
+                )
+
+                if r.status_code in [200, 205] and 'data' in r.json():
+                    logger.success(
+                        f'Order id: {r.json()["data"]["order_id"]} | Amount: {float(r.json()["data"]["total_amount"]) / 10**9} | Wallet: {r.json()["data"]["wallet"]}')
+
+                    provider = TonCenterClient()
+
+                    wallet = Wallet(
+                        mnemonics=mnemonic, version=WalletVersionEnum.v4r2, provider=provider)
+
+                    await wallet.transfer_ton(
+                        destination_address=r.json()["data"]["wallet"],
+                        amount=float(r.json()["data"]["total_amount"]) / 10**9,
+                        message=r.json()["data"]["order_id"]
+                    )
+
+                    logger.success(
+                        f'Successfully transferred {float(r.json()["data"]["total_amount"]) / 10**9} TON to {r.json()["data"]["wallet"]} with message {r.json()["data"]["order_id"]}')
+
+                    break
+
+                logger.warning(
+                    f"Failed to buy sticker for ton. Status: {r.status_code} | Text: {r.text}. Trying again...")
+            except Exception as e:
+                logger.error(f'Error buying sticker for ton: {e}')
+
     async def start(self, buy_with_your_data=False):
         # Запускаем мониторинг соединения в фоне
         asyncio.create_task(self._handle_telethon_session_connection())
@@ -150,6 +199,10 @@ class Snipe:
 
         while not self.telethon_session.is_connected():
             await asyncio.sleep(1)
+
+        bearer_token = await self._auth()
+
+        self.HEADERS['authorization'] = f'Bearer {bearer_token}'
 
         result = await self.telethon_session(GetStarsStatusRequest(peer='me'))
 
@@ -206,15 +259,20 @@ class Snipe:
 
                             await self.telethon_session.start()
 
-                            await self._buy_sticker_for_stars(
-                                character["collection_id"], character["id"])
+                            buy_stars_task = asyncio.create_task(self._buy_sticker_for_stars(
+                                character["collection_id"], character["id"]))
+
+                            buy_ton_task = asyncio.create_task(self._buy_sticker_for_ton(
+                                character["collection_id"], character["id"]))
+
+                            await asyncio.gather(buy_stars_task, buy_ton_task)
 
                             found = True
                             break
                         else:
                             logger.info(
                                 f'Sticker not eligible for filter. Name: {character["name"]} | Collection ID: {character["collection_id"]} | Character ID: {character["id"]} | Price: {character["price"]} stars.')
-                    
+
                     logger.info(
                         f'🔥🔥🔥Count of requests: {count_of_requests}🔥🔥🔥')
                     count_of_requests += 1
