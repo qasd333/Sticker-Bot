@@ -11,7 +11,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich import box
 from rich.text import Text
-from data.config import API_ID, API_HASH,  COUNT_FOR_BUY, STICKER_NAME
+from data.config import API_ID, API_HASH, STICKER_NAME, COUNT_FOR_BUY_TON, COUNT_FOR_BUY_STARS
 
 sys.path.append(os.path.realpath("."))
 
@@ -60,7 +60,8 @@ class Console:
         config.add_row("API ID", f"{str(API_ID)[:5]}...{str(API_ID)[-5:]}")
         config.add_row(
             "API Hash", f"{str(API_HASH)[:5]}...{str(API_HASH)[-5:]}")
-        config.add_row("[bold underline]Count for buy[/bold underline]", str(COUNT_FOR_BUY))
+        config.add_row("[bold underline]Count for buy ton[/bold underline]", str(COUNT_FOR_BUY_TON))
+        config.add_row("[bold underline]Count for buy stars[/bold underline]", str(COUNT_FOR_BUY_STARS))
         config.add_row("[bold underline]Sticker name[/bold underline]", STICKER_NAME)
 
         panel = Panel(
